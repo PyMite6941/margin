@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Margin guide</title>
+<style>
+  :root { color-scheme: light dark; --line: #dedad2; --dim: #736e64; --accent: #a8431a; }
+  @media (prefers-color-scheme: dark) { :root { --line: #34343a; --dim: #96928a; --accent: #e8915f; } body { background: #18181a; color: #e8e5df; } }
+  body { max-width: 720px; margin: 0 auto; padding: 48px 20px 96px; font: 17px/1.6 Georgia, "Iowan Old Style", serif; }
+  h1 { font-size: 2em; margin: 0 0 .2em; } h2 { margin: 2em 0 .4em; font-size: 1.3em; }
+  a { color: var(--accent); } .lead { color: var(--dim); margin-top: 0; }
+  table { width: 100%; border-collapse: collapse; font: 15px/1.4 system-ui, sans-serif; }
+  td, th { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--dim); font-weight: 600; } td:first-child { white-space: nowrap; }
+  kbd, code { font: .85em ui-monospace, Menlo, Consolas, monospace; padding: .1em .4em; border: 1px solid var(--line); border-radius: 4px; }
+  pre { padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; } pre code { border: 0; padding: 0; }
+</style>
+</head>
+<body>
+<h1>Margin</h1>
+<p class="lead">A quiet text editor for the browser and the desktop. <a href="../">Open the editor</a></p>
+
+<h2>How it works</h2>
+<p>Margin keeps a list of documents in the sidebar. The first line of a document is its title. Everything is saved automatically as you type, on this device. Nothing is sent anywhere, and there is no account.</p>
+<p>The view button in the toolbar cycles through <strong>Write</strong> (plain text), <strong>Split</strong> (text beside a formatted preview) and <strong>Read</strong> (preview only). <strong>Focus</strong> hides everything except the page. <strong>Aa</strong> sets the theme, typeface, text size and line width.</p>
+
+<h2>Keys</h2>
+<table>
+  <tr><th>Key</th><th>Does</th></tr>
+  <tr><td><kbd>Ctrl</kbd> <kbd>S</kbd></td><td>Save the document to a file</td></tr>
+  <tr><td><kbd>Ctrl</kbd> <kbd>O</kbd></td><td>Open a file</td></tr>
+  <tr><td><kbd>Ctrl</kbd> <kbd>B</kbd> / <kbd>I</kbd></td><td>Bold or italic. Press again to remove it</td></tr>
+  <tr><td><kbd>Tab</kbd> / <kbd>Shift</kbd> <kbd>Tab</kbd></td><td>Indent or outdent the selected lines</td></tr>
+  <tr><td><kbd>Enter</kbd></td><td>Inside a list, starts the next item. On an empty item, ends the list</td></tr>
+  <tr><td><kbd>Alt</kbd> <kbd>N</kbd></td><td>New document</td></tr>
+  <tr><td><kbd>Alt</kbd> <kbd>P</kbd></td><td>Switch view</td></tr>
+  <tr><td><kbd>Alt</kbd> <kbd>F</kbd></td><td>Focus mode. <kbd>Esc</kbd> leaves it</td></tr>
+  <tr><td><kbd>Alt</kbd> <kbd>L</kbd></td><td>Show or hide the document list</td></tr>
+  <tr><td><kbd>Ctrl</kbd> <kbd>P</kbd></td><td>Print the formatted document, or save it as a PDF</td></tr>
+</table>
+<p>On a Mac, use <kbd>Cmd</kbd> where this says <kbd>Ctrl</kbd> and <kbd>Option</kbd> for <kbd>Alt</kbd>.</p>
+
+<h2>Files</h2>
+<p>Margin reads and writes plain text: <code>.md</code>, <code>.markdown</code> and <code>.txt</code>. You can also drag one of those files onto the window to open it.</p>
+<table>
+  <tr><th>Where</th><th>Open and Save</th></tr>
+  <tr><td>Desktop app</td><td>Native dialogs. After the first save, <kbd>Ctrl</kbd> <kbd>S</kbd> writes to the same file</td></tr>
+  <tr><td>Chrome, Edge</td><td>The browser asks which file to use, then saves back to it</td></tr>
+  <tr><td>Firefox, Safari</td><td>Open uploads a copy; Save downloads one</td></tr>
+</table>
+
+<h2>Where your writing lives</h2>
+<p>The document list is stored on the device by the browser (or by the desktop app). It stays private, and it also means the list goes away if you clear site data or use a private window. For anything you want to keep, use <strong>Save</strong>.</p>
+
+<h2>Formatting</h2>
+<p>The preview understands a practical subset of Markdown:</p>
+<table>
+  <tr><th>Type</th><th>Get</th></tr>
+  <tr><td><code># Title</code> to <code>###### Title</code></td><td>Headings</td></tr>
+  <tr><td><code>**bold**</code> <code>*italic*</code> <code>~~struck~~</code></td><td>Emphasis</td></tr>
+  <tr><td><code>`code`</code> and <code>```</code> fences</td><td>Inline code and code blocks</td></tr>
+  <tr><td><code>[text](https://…)</code></td><td>Link</td></tr>
+  <tr><td><code>![alt](https://…)</code></td><td>Image</td></tr>
+  <tr><td><code>- item</code>, <code>1. item</code></td><td>Lists. Indent by two spaces to nest</td></tr>
+  <tr><td><code>- [ ] task</code>, <code>- [x] done</code></td><td>Task list</td></tr>
+  <tr><td><code>&gt; quote</code></td><td>Block quote</td></tr>
+  <tr><td><code>---</code></td><td>Rule</td></tr>
+</table>
+<p>Tables, footnotes and raw HTML are not supported. HTML in a document is shown as text, never run.</p>
+
+<h2>Desktop app</h2>
+<p>The desktop app is the same editor in its own window, with native file dialogs. To run it from source you need <a href="https://nodejs.org">Node.js</a> 20 or newer:</p>
+<pre><code>git clone https://github.com/PyMite6941/margin
+cd margin
+npm install
+npm run desktop</code></pre>
+<p>The <a href="https://github.com/PyMite6941/margin#readme">README</a> covers development and building an installer.</p>
+</body>
+</html>

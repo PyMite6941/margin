@@ -1,0 +1,98 @@
+:root {
+  --paper: #fbfaf7; --panel: #f1efea; --line: #dedad2; --ink: #1f1d1a; --dim: #736e64; --accent: #a8431a;
+  --size: 18px; --width: 68;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  --face: var(--serif);
+  color-scheme: light;
+}
+:root[data-theme="dark"] { --paper: #18181a; --panel: #202023; --line: #34343a; --ink: #e8e5df; --dim: #96928a; --accent: #e8915f; color-scheme: dark; }
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="auto"] { --paper: #18181a; --panel: #202023; --line: #34343a; --ink: #e8e5df; --dim: #96928a; --accent: #e8915f; color-scheme: dark; }
+}
+:root[data-font="sans"] { --face: var(--sans); }
+:root[data-font="mono"] { --face: var(--mono); }
+
+* { box-sizing: border-box; }
+html, body, #root, #app { height: 100%; margin: 0; }
+#app { display: flex; }
+body { background: var(--paper); color: var(--ink); font: 14px/1.4 var(--sans); }
+button, input, select { font: inherit; color: inherit; }
+button, summary { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.grow { flex: 1; }
+
+/* sidebar */
+#sidebar { width: 250px; flex: none; display: flex; flex-direction: column; background: var(--panel); border-right: 1px solid var(--line); }
+.no-side #sidebar, .focus #sidebar { display: none; }
+.side-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 12px 8px; }
+.side-head strong { font: 600 16px var(--serif); letter-spacing: .01em; }
+#filter { margin: 0 12px 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); }
+#docs { list-style: none; margin: 0; padding: 0 6px; overflow-y: auto; flex: 1; }
+#docs li { display: flex; border-radius: 6px; }
+#docs li.on { background: var(--paper); box-shadow: inset 2px 0 var(--accent); }
+#docs li:hover .del, .del:focus-visible { opacity: 1; }
+.pick { flex: 1; min-width: 0; padding: 7px 8px; border: 0; background: none; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick small { display: block; color: var(--dim); font-size: 12px; }
+.del { border: 0; background: none; color: var(--dim); padding: 0 10px; opacity: 0; font-size: 16px; }
+.del:hover { color: var(--accent); }
+.guide { padding: 10px 14px; color: var(--dim); text-decoration: none; border-top: 1px solid var(--line); }
+.guide:hover { color: var(--ink); }
+
+/* toolbar and status */
+main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+#bar, #status { display: flex; align-items: center; gap: 4px; padding: 6px 10px; color: var(--dim); }
+#status { gap: 16px; font-size: 12px; padding: 5px 14px; }
+.focus #bar { display: none; }
+#bar button, #settings summary, .side-head button { border: 1px solid transparent; background: none; padding: 5px 10px; border-radius: 6px; list-style: none; }
+#bar button:hover, #settings summary:hover, #settings[open] summary, .side-head button:hover { background: var(--panel); border-color: var(--line); color: var(--ink); }
+.side-head button:hover { background: var(--paper); }
+#settings summary::-webkit-details-marker { display: none; }
+#settings { position: relative; }
+.menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 3; width: 220px; padding: 12px; display: grid; gap: 10px; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 24px rgb(0 0 0 / .12); color: var(--ink); }
+.menu label { display: grid; gap: 4px; font-size: 12px; color: var(--dim); }
+.menu select { padding: 4px; }
+
+/* page */
+#panes { flex: 1; min-height: 0; display: flex; }
+#ed, #preview {
+  flex: 1; min-width: 0; overflow-y: auto; margin: 0; border: 0; outline: 0; background: none; color: var(--ink);
+  font: var(--size)/1.65 var(--face);
+  /* padding percentages resolve against #panes, so --pane says how much of it this column gets */
+  padding: 32px max(24px, calc((var(--pane, 100%) - var(--width) * 1ch) / 2)) 40vh;
+}
+#ed { resize: none; tab-size: 2; caret-color: var(--accent); }
+#ed::placeholder { color: var(--dim); opacity: .6; }
+#preview { display: none; overflow-wrap: break-word; }
+[data-view="split"] #panes { --pane: 50%; }
+[data-view="split"] #preview { display: block; border-left: 1px solid var(--line); }
+[data-view="read"] #preview { display: block; }
+[data-view="read"] #ed { display: none; }
+
+#preview > :first-child { margin-top: 0; }
+#preview h1, #preview h2, #preview h3, #preview h4 { line-height: 1.25; margin: 1.6em 0 .5em; }
+#preview h1 { font-size: 1.8em; } #preview h2 { font-size: 1.35em; } #preview h3 { font-size: 1.1em; }
+#preview p, #preview ul, #preview ol, #preview pre, #preview blockquote { margin: 0 0 1em; }
+#preview ul, #preview ol { padding-left: 1.4em; }
+#preview li.task { list-style: none; margin-left: -1.4em; }
+#preview a { color: var(--accent); }
+#preview img { max-width: 100%; }
+#preview code { font: .88em var(--mono); background: var(--panel); padding: .1em .35em; border-radius: 4px; }
+#preview pre { background: var(--panel); padding: 12px 14px; border-radius: 8px; overflow-x: auto; line-height: 1.5; }
+#preview pre code { padding: 0; background: none; }
+#preview blockquote { padding-left: 1em; border-left: 3px solid var(--line); color: var(--dim); }
+#preview hr { border: 0; border-top: 1px solid var(--line); margin: 2em 0; }
+
+@media (max-width: 700px) {
+  #sidebar { position: fixed; z-index: 4; height: 100%; width: min(85vw, 300px); box-shadow: 0 0 40px rgb(0 0 0 / .25); }
+  [data-view="split"] #panes { flex-direction: column; --pane: 100%; }
+  [data-view="split"] #preview { border-left: 0; border-top: 1px solid var(--line); }
+  #pos { display: none; }
+}
+
+@media print {
+  #sidebar, #bar, #status, #ed { display: none !important; }
+  html, body, #root, #app, main, #panes { display: block; height: auto; }
+  #preview { display: block !important; overflow: visible; padding: 0; border: 0 !important; color: #000; }
+}
