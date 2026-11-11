@@ -55,7 +55,14 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .menu select { padding: 4px; }
 
 /* page */
-#panes { flex: 1; min-height: 0; display: flex; }
+#panes { flex: 1; min-height: 0; display: flex; position: relative; }
+#find { position: absolute; top: 8px; right: 20px; z-index: 2; display: flex; align-items: center; gap: 4px; padding: 6px; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 24px rgb(0 0 0 / .12); font-size: 13px; }
+#find input { width: 150px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); }
+#find button { border: 1px solid transparent; background: none; padding: 4px 8px; border-radius: 6px; }
+#find button:hover { background: var(--panel); border-color: var(--line); }
+#find span { color: var(--dim); white-space: nowrap; }
+#find span:empty { display: none; }
+#hit { position: absolute; z-index: 1; pointer-events: none; border-radius: 3px; background: color-mix(in srgb, var(--accent) 35%, transparent); }
 #ed, #preview {
   flex: 1; min-width: 0; overflow-y: auto; margin: 0; border: 0; outline: 0; background: none; color: var(--ink);
   font: var(--size)/1.65 var(--face);
@@ -92,7 +99,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 }
 
 @media print {
-  #sidebar, #bar, #status, #ed { display: none !important; }
+  #sidebar, #bar, #status, #ed, #find { display: none !important; }
   html, body, #root, #app, main, #panes { display: block; height: auto; }
   #preview { display: block !important; overflow: visible; padding: 0; border: 0 !important; color: #000; }
 }

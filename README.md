@@ -9,7 +9,7 @@ A quiet text editor for the browser and the desktop. Documents are saved on your
 
 | How | What to do |
 | --- | --- |
-| In a browser, any device | Open https://pymite6941.github.io/margin/. Nothing to install |
+| In a browser, any device | Open https://pymite6941.github.io/margin/. Nothing to install. It keeps working offline after the first visit, and Chrome, Edge and phones offer "Install" to add it as an app |
 | Desktop app | Download the installer for your system from [Releases](https://github.com/PyMite6941/margin/releases/latest): `.exe` for Windows, `.dmg` for macOS, `.AppImage` for Linux |
 | From source | `npm install`, then `npm run desktop` |
 
@@ -20,6 +20,7 @@ The installers are not code-signed yet. Windows shows a SmartScreen prompt (More
 - A sidebar of documents with search; the first line is the title
 - Write, Split and Read views with a Markdown preview
 - Focus mode, light and dark themes, three typefaces, adjustable text size and line width
+- Find and replace
 - Lists that continue on Enter, Tab to indent, Ctrl+B and Ctrl+I
 - Opens and saves `.md`, `.markdown` and `.txt` files; drag a file in to open it
 - Word count, reading time and cursor position
@@ -50,11 +51,13 @@ One React app, two shells. The web build is what GitHub Pages serves. The deskto
 | `src/components/Sidebar.jsx` | Document list and search |
 | `src/lib/files.js` | Opening and saving files. **Add new file types here** |
 | `src/lib/storage.js` | Documents and preferences in `localStorage` |
-| `src/lib/editing.js` | Bold/italic wrapping, indenting, list continuation |
+| `src/lib/editing.js` | Bold/italic wrapping, indenting, list continuation, find and replace |
 | `src/lib/markdown.js` | The Markdown renderer behind the preview |
 | `desktop/main.cjs` | Electron window, `app://` file server, open and save handlers |
 | `desktop/preload.cjs` | The `window.desktop` bridge the page uses on desktop |
 | `public/docs/` | User guide, published alongside the app |
+| `public/sw.js`, `src/lib/offline.js` | Offline support and install for the web version |
+| `public/icon.svg`, `build/icon.png` | App icon (web and installers) |
 | `.github/workflows/pages.yml` | Builds and deploys to GitHub Pages on every push to `main` |
 | `.github/workflows/release.yml` | Builds desktop installers when a `v*` tag is pushed |
 
