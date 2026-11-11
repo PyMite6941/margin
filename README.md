@@ -21,15 +21,23 @@ A quiet text editor for the browser and the desktop. Documents are saved on your
 curl.exe -L -o "$env:TEMP\Margin-Setup.exe" https://github.com/PyMite6941/margin/releases/latest/download/Margin-Setup.exe; & "$env:TEMP\Margin-Setup.exe"
 ```
 
-**Linux** (x86-64 and ARM64, including Raspberry Pi):
+**Debian, Ubuntu, Raspberry Pi OS** (x86-64 and ARM64). This installs the app with everything it needs and adds it to the applications menu:
+
+```sh
+curl -L -o /tmp/margin.deb "https://github.com/PyMite6941/margin/releases/latest/download/Margin-$(dpkg --print-architecture).deb" && sudo apt install -y /tmp/margin.deb
+```
+
+Then run `margin` or pick Margin from the menu. Remove it with `sudo apt remove margin`.
+
+**Other Linux** (portable AppImage, nothing installed system-wide):
 
 ```sh
 curl -L -o Margin.AppImage "https://github.com/PyMite6941/margin/releases/latest/download/Margin-$(uname -m | sed s/aarch64/arm64/).AppImage"
 chmod +x Margin.AppImage
-./Margin.AppImage
+./Margin.AppImage --appimage-extract-and-run
 ```
 
-If the AppImage complains about FUSE, either install it (`sudo apt install libfuse2`, or `libfuse2t64` on Ubuntu 24.04 and newer) or run `./Margin.AppImage --appimage-extract-and-run`.
+`--appimage-extract-and-run` makes it work on systems without FUSE 2 (most current distributions); with `libfuse2` installed you can leave it off and it starts faster.
 
 **macOS:** download `Margin-arm64.dmg` from [Releases](https://github.com/PyMite6941/margin/releases/latest), open it and drag the app to Applications.
 
