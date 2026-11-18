@@ -1,15 +1,71 @@
 {
+  "id": "./",
   "name": "Margin",
   "short_name": "Margin",
   "description": "A quiet text editor for the browser and the desktop that keeps your writing on your own machine.",
-  "start_url": ".",
-  "scope": ".",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#fbfaf7",
   "theme_color": "#fbfaf7",
+  "categories": [
+    "productivity",
+    "utilities"
+  ],
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New document",
+      "url": "./?new",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "./",
+      "accept": {
+        "text/markdown": [
+          ".md",
+          ".markdown"
+        ],
+        "text/plain": [
+          ".txt"
+        ],
+        "text/html": [
+          ".html",
+          ".htm"
+        ]
+      },
+      "launch_type": "single-client"
+    }
   ]
 }

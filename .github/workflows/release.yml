@@ -25,7 +25,49 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - run: npx --yes electron-builder --publish always
+      # Pinned: 26.18 is the version checked for ad-hoc macOS signing (mac.identity "-").
+      - run: npx --yes electron-builder@26.18.0 --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
+
+  # The Java window (java/src) as a self-contained app per system, zipped and
+  # attached to the same release once the Electron job has created it.
+  java:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, name: linux-x64 }
+          - { os: windows-latest, name: windows-x64 }
+          - { os: macos-latest, name: macos-arm64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+      - run: npm ci
+      - run: node scripts/java.mjs package
+      - name: Zip
+        shell: bash
+        run: |
+          cd release/java
+          if [ "$RUNNER_OS" = Windows ]; then 7z a "../../Margin-Java-${{ matrix.name }}.zip" Margin; else zip -qry "../../Margin-Java-${{ matrix.name }}.zip" Margin*; fi
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: gh release upload "$GITHUB_REF_NAME" "Margin-Java-${{ matrix.name }}.zip" --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: Margin-Java-${{ matrix.name }}
+          path: Margin-Java-${{ matrix.name }}.zip

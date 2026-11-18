@@ -1,6 +1,8 @@
 // Small Markdown renderer. Covers what notes actually use: headings, emphasis,
-// code, links, images, nested lists, task lists, quotes and rules. No tables,
-// no raw HTML (everything is escaped).
+// code, links, images, nested lists, task lists, tables, quotes and rules.
+// No raw HTML (everything is escaped).
+// md(text, { tasks: true }) makes task checkboxes clickable: each carries data-task,
+// the source line it came from, so the preview can tick it in the text.
 
 export const md = (() => {
   const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -9,6 +11,8 @@ export const md = (() => {
   const LIST = /^(\s*)([-*+]|\d+[.)])\s+(.*)/;
   const RULE = /^\s*([-*_])(\s*\1){2,}\s*$/;
   const BLOCK = /^(#{1,6}\s|>|```)/;
+  const SEP = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
+  const cells = row => row.trim().replace(/^\|/, '').replace(/(?<!\\)\|$/, '').split(/(?<!\\)\|/).map(c => c.trim().replace(/\\\|/g, '|'));
 
   function inline(s) {
     const code = [];
@@ -23,9 +27,22 @@ export const md = (() => {
       .replace(/\0(\d+)\0/g, (_, i) => `<code>${code[i]}</code>`);
   }
 
-  return function render(src) {
+  return function render(src, opts = {}, base = 0) {
     const lines = src.replace(/\r/g, '').split('\n');
     let out = '', i = 0, m;
+    const isTable = k => lines[k].includes('|') && lines[k + 1]?.includes('|') && SEP.test(lines[k + 1]);
+
+    const table = () => {
+      const head = cells(lines[i]);
+      const align = cells(lines[i + 1]).map(c => (c.startsWith(':') && c.endsWith(':') ? 'center' : c.endsWith(':') ? 'right' : c.startsWith(':') ? 'left' : ''));
+      const cell = (tag, c, k) => `<${tag}${align[k] ? ` style="text-align:${align[k]}"` : ''}>${inline(c)}</${tag}>`;
+      out += `<table><thead><tr>${head.map((c, k) => cell('th', c, k)).join('')}</tr></thead><tbody>`;
+      for (i += 2; i < lines.length && lines[i].trim() && lines[i].includes('|'); i++) {
+        const row = cells(lines[i]);
+        out += `<tr>${head.map((_, k) => cell('td', row[k] ?? '', k)).join('')}</tr>`;
+      }
+      out += '</tbody></table>';
+    };
 
     const list = () => {
       const open = [];
@@ -36,7 +53,7 @@ export const md = (() => {
         else out += '</li>';
         const task = m[3].match(/^\[([ xX])\]\s+(.*)/);
         out += task
-          ? `<li class="task"><input type="checkbox" disabled${task[1] === ' ' ? '' : ' checked'}> ${inline(task[2])}`
+          ? `<li class="task"><input type="checkbox"${opts.tasks ? ` data-task="${base + i}" title="Tick or untick"` : ' disabled'}${task[1] === ' ' ? '' : ' checked'}> ${inline(task[2])}`
           : `<li>${inline(m[3])}`;
         i++;
       }
@@ -56,14 +73,16 @@ export const md = (() => {
       } else if (RULE.test(l)) {
         out += '<hr>'; i++;
       } else if (l.startsWith('>')) {
-        const buf = [];
+        const buf = [], start = i;
         for (; i < lines.length && lines[i].startsWith('>'); i++) buf.push(lines[i].replace(/^>\s?/, ''));
-        out += `<blockquote>${render(buf.join('\n'))}</blockquote>`;
+        out += `<blockquote>${render(buf.join('\n'), opts, base + start)}</blockquote>`;
       } else if (LIST.test(l)) {
         list();
+      } else if (isTable(i)) {
+        table();
       } else {
         const buf = [];
-        for (; i < lines.length && lines[i].trim() && !BLOCK.test(lines[i]) && !LIST.test(lines[i]) && !RULE.test(lines[i]); i++) buf.push(inline(lines[i]));
+        for (; i < lines.length && lines[i].trim() && !BLOCK.test(lines[i]) && !LIST.test(lines[i]) && !RULE.test(lines[i]) && !(buf.length && isTable(i)); i++) buf.push(inline(lines[i]));
         out += `<p>${buf.join('<br>')}</p>`;
       }
     }

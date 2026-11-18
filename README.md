@@ -5,17 +5,20 @@ A quiet text editor for the browser and the desktop. Documents are saved on your
 - **Use it in a browser:** https://pymite6941.github.io/margin/
 - **Guide:** https://pymite6941.github.io/margin/docs/
 
+![Margin in split view, with the document list, an outline of headings, the Markdown text and its formatted preview](public/docs/img/editor.png)
+
 ## Run it
 
 | How | What to do |
 | --- | --- |
 | In a browser, any device | Open https://pymite6941.github.io/margin/. Nothing to install. It keeps working offline after the first visit, and Chrome, Edge and phones offer "Install" to add it as an app |
 | Desktop app | Run the install command for your system below, or download from [Releases](https://github.com/PyMite6941/margin/releases/latest) |
+| Java window | Download `Margin-Java-<system>.zip` from [Releases](https://github.com/PyMite6941/margin/releases/latest), unzip, run `Margin` inside. Or from source: `npm install && npm run java` (needs a JDK 21 or newer) |
 | From source | `git clone https://github.com/PyMite6941/margin && cd margin && npm install && npm run desktop` (needs Node.js 20 or newer) |
 
 ### Install the desktop app
 
-**Windows** (PowerShell):
+**Windows** (PowerShell). One installer for x64 and ARM64; it installs for your user only, adds Margin to the Start menu and the desktop, and opens it:
 
 ```powershell
 curl.exe -L -o "$env:TEMP\Margin-Setup.exe" https://github.com/PyMite6941/margin/releases/latest/download/Margin-Setup.exe; & "$env:TEMP\Margin-Setup.exe"
@@ -39,19 +42,53 @@ chmod +x Margin.AppImage
 
 `--appimage-extract-and-run` makes it work on systems without FUSE 2 (most current distributions); with `libfuse2` installed you can leave it off and it starts faster.
 
-**macOS:** download `Margin-arm64.dmg` from [Releases](https://github.com/PyMite6941/margin/releases/latest), open it and drag the app to Applications.
+**macOS** (Terminal; Apple silicon and Intel, macOS 12 or newer). This copies Margin into Applications and opens it:
 
-The installers are not code-signed yet. If Windows shows a SmartScreen prompt, choose More info, then Run anyway; on macOS, right-click the app and choose Open the first time.
+```sh
+curl -L -o /tmp/Margin.dmg "https://github.com/PyMite6941/margin/releases/latest/download/Margin-$(uname -m | sed s/x86_64/x64/).dmg" && hdiutil attach -nobrowse -quiet /tmp/Margin.dmg && cp -R /Volumes/Margin/Margin.app /Applications/ && hdiutil detach -quiet /Volumes/Margin && open /Applications/Margin.app
+```
+
+Or download `Margin-arm64.dmg` (Apple silicon) or `Margin-x64.dmg` (Intel) from [Releases](https://github.com/PyMite6941/margin/releases/latest), open it and drag Margin to Applications.
+
+The installers are not signed with a paid developer certificate yet. If Windows shows a SmartScreen prompt, choose More info, then Run anyway. On macOS, a downloaded app is blocked the first time: open System Settings → Privacy & Security, scroll down and choose Open Anyway (the Terminal command above avoids this).
+
+### Keep it in the taskbar or Dock
+
+| System | How |
+|---|---|
+| Windows | Start Margin, right-click its taskbar button and choose **Pin to taskbar**. Right-click the pinned icon for **New document** and recent files |
+| macOS | Start Margin, right-click its Dock icon and choose **Options → Keep in Dock**. Right-click it for **New Document**; drop a file on it to open the file |
+| Linux | Margin is in the applications menu after installing the `.deb`; pin it from there or from the dock (right-click → Add to Favorites / Pin) |
+| Browser | In Chrome or Edge, use **Install Margin** in the address bar (or the menu → Cast, save and share → Install). It then opens in its own window and can be pinned like any app, and can open `.md`, `.txt` and `.html` files |
+
+The desktop apps open `.md` and `.markdown` files with a double-click, and appear under **Open With** for `.txt` and `.html`. Only one Margin window runs: opening another file sends it to the window you already have.
 
 ## What it does
 
-- A sidebar of documents with search; the first line is the title
-- Write, Split and Read views with a Markdown preview
+- A sidebar of documents with search; the first line is the title. Pin documents to the top
+- **Version history**: snapshots on open, every few minutes of editing, and before any wholesale rewrite; see what changed, name versions, restore or open one as a copy
+- **Trash**: deleting is undoable, and deleted documents can be put back for 30 days
+- **Outline** of the document's headings beside the text; click to jump
+- Three document types, each saved as its own file type: Markdown (`.md`), HTML (`.html`) and plain text (`.txt`)
+- Write, Split and Read views; HTML previews in a sandbox with scripts off
+- **Tidy** re-indents HTML tags; a Markdown document switched to HTML is converted
 - Focus mode, light and dark themes, three typefaces, adjustable text size and line width
-- Find and replace
-- Lists that continue on Enter, Tab to indent, Ctrl+B and Ctrl+I
-- Opens and saves `.md`, `.markdown` and `.txt` files; drag a file in to open it
-- Word count, reading time and cursor position
+- Find and replace with match counts, match case, whole words and regular expressions
+- Markdown tables and checklists you can tick in the preview
+- Lists that continue on Enter, Tab to indent, Ctrl+B, Ctrl+I, Ctrl+K for links, Ctrl+Alt+1-6 for headings, Ctrl+Shift+7/8/9 for lists
+- Make a copy; export as a standalone web page or as plain text; print or save as PDF
+- Opens and saves `.md`, `.markdown`, `.html`, `.htm` and `.txt` files; drag a file in to open it
+- Settings behind the gear at the foot of the sidebar: appearance, line spacing, spell check, wrapping, indent width, auto-closing brackets and HTML tags, default document type, list sorting, keeping saved files up to date as you type, backup export/import, and a shortcut list
+- Optional AI from any provider you choose (see below)
+- Word count (of the selection too), reading time and cursor position
+
+The guide has a [comparison with Google Docs](https://pymite6941.github.io/margin/docs/#google-docs): Margin takes what works without a server (history, outline, trash, find options, checklists, export) and leaves out what needs one (live collaboration, sharing, comments).
+
+## AI, bring your own
+
+Margin ships no AI and none runs by default. In Settings → AI you can point it at any provider: anything with an OpenAI-compatible `/chat/completions` endpoint (OpenAI, OpenRouter, Groq, Mistral, Ollama, LM Studio, llama.cpp…) or the Anthropic Messages API. Once a model is named, one **AI** button (Ctrl+J) appears: give an instruction and the reply replaces the selection, or the whole document. Ctrl+Z undoes it.
+
+Keep it that way. **No AI bloat:** no SDKs, no chat panel, no background calls, no AI anywhere unless the user turned it on. All of it lives in `src/lib/ai.js` (one `fetch`) and the `AiBar` in `src/components/Editor.jsx`. The key stays in `localStorage` and goes only to the address the user typed. The desktop shells pass requests through `window.desktop.request`, so local servers and providers without CORS work there.
 
 ## Develop
 
@@ -63,6 +100,8 @@ npm run dev          # web app with live reload, http://localhost:5173
 npm run build        # static site in dist/
 npm run desktop      # build, then open the desktop app
 npm run desktop:dev  # desktop app pointed at the dev server (run `npm run dev` first)
+npm run java         # build, then open the Java window (needs a JDK 21+; fetches JavaFX into java/lib/ once)
+npm run java:package # self-contained Java app in release/java (add `-- exe`, `-- deb`, ... for an installer)
 npm run package      # build an installer into release/ (downloads electron-builder on first use)
 ```
 
@@ -70,20 +109,33 @@ To publish installers for every system, push a version tag (bump `version` in `p
 
 ## How it is put together
 
-One React app, two shells. The web build is what GitHub Pages serves. The desktop app is Electron loading that same build and adding native file dialogs.
+One React app, three ways to run it. The web build is what GitHub Pages serves. The Electron app and the Java window both load that same build and add native file dialogs through the same `window.desktop` bridge (`open`, `save`, `request`).
 
 | Path | Purpose |
 | --- | --- |
 | `src/App.jsx` | State and layout: documents, preferences, toolbar, status bar |
 | `src/components/Editor.jsx` | The textarea and its keyboard behaviour |
-| `src/components/Sidebar.jsx` | Document list and search |
-| `src/lib/files.js` | Opening and saving files. **Add new file types here** |
-| `src/lib/storage.js` | Documents and preferences in `localStorage` |
-| `src/lib/editing.js` | Bold/italic wrapping, indenting, list continuation, find and replace |
+| `src/components/Sidebar.jsx` | Document list, search, pinning and the trash |
+| `src/components/History.jsx` | Version history dialog |
+| `src/components/Menu.jsx` | The ⋯ drop-down menu |
+| `src/lib/history.js` | Version snapshots, kept apart from the documents |
+| `src/lib/diff.js` | Line-then-word comparison behind version history |
+| `src/lib/outline.js` | Headings for the outline |
+| `src/lib/exporting.js` | Export as a web page or plain text |
+| `src/lib/modes.js` | Document types (Markdown, HTML, plain text) and their extensions. **Add new file types here** |
+| `src/lib/files.js` | Opening and saving files |
+| `src/lib/tidy.js` | HTML indenter behind Tidy |
+| `src/lib/ai.js` | Optional bring-your-own AI. Keep it small |
+| `src/components/Settings.jsx` | The settings dialog behind the gear. New preferences also need a default in `DEFAULT_PREFS` (`src/lib/storage.js`) |
+| `src/lib/storage.js` | Documents (including the trash) and preferences in `localStorage` |
+| `src/lib/editing.js` | Formatting shortcuts, indenting, lists, links, headings, find and replace |
 | `src/lib/markdown.js` | The Markdown renderer behind the preview |
 | `desktop/main.cjs` | Electron window, `app://` file server, open and save handlers |
 | `desktop/preload.cjs` | The `window.desktop` bridge the page uses on desktop |
-| `public/docs/` | User guide, published alongside the app |
+| `java/src/margin/Margin.java` | Java window: JavaFX WebView, the same `window.desktop` bridge |
+| `scripts/java.mjs` | Fetches JavaFX, compiles, runs or packages the Java window |
+| `public/docs/` | User guide, published alongside the app. Screenshots are in `public/docs/img/` |
+| `scripts/icons.py` | Draws every app icon (taskbar, Dock, web app, installers) from the shapes in `public/icon.svg`. Needs Pillow |
 | `public/sw.js`, `src/lib/offline.js` | Offline support and install for the web version |
 | `public/icon.svg`, `build/icon.png` | App icon (web and installers) |
 | `.github/workflows/pages.yml` | Builds and deploys to GitHub Pages on every push to `main` |
@@ -91,7 +143,9 @@ One React app, two shells. The web build is what GitHub Pages serves. The deskto
 
 `src/lib/files.js` picks the best backend available: `window.desktop` in the desktop app, the File System Access API in Chrome and Edge, and upload/download elsewhere. Nothing outside that file knows which one is in use.
 
-The desktop app can only write to paths the user chose in a dialog during that session (see `granted` in `desktop/main.cjs`).
+The desktop apps can only write to paths the user chose in a dialog during that session (see `granted` in `desktop/main.cjs` and `Margin.java`).
+
+The packaged Java app does not start from a folder whose path has non-ASCII characters (a jpackage launcher limit), so keep `release/java` copies somewhere like `C:\Apps`. Normal install locations are fine.
 
 ## License
 

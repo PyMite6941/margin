@@ -7,13 +7,16 @@
   "license": "MIT",
   "type": "module",
   "main": "desktop/main.cjs",
+  "desktopName": "margin.desktop",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "desktop": "vite build && electron .",
     "desktop:dev": "DEV_URL=http://localhost:5173 electron .",
-    "package": "vite build && npx electron-builder"
+    "package": "vite build && npx --yes electron-builder@26.18.0",
+    "java": "node scripts/java.mjs run",
+    "java:package": "node scripts/java.mjs package"
   },
   "build": {
     "appId": "io.github.pymite6941.margin",
@@ -46,21 +49,101 @@
       "icon": "build/icon.png",
       "artifactName": "${productName}-${arch}.${ext}",
       "maintainer": "PyMite6941 <226280841+PyMite6941@users.noreply.github.com>",
-      "synopsis": "A quiet text editor for the browser and the desktop that keeps your writing on your own machine"
+      "synopsis": "A quiet text editor for the browser and the desktop that keeps your writing on your own machine",
+      "executableName": "margin",
+      "desktop": {
+        "entry": {
+          "Keywords": "markdown;text;editor;writing;notes;",
+          "Actions": "new-document;"
+        },
+        "desktopActions": {
+          "new-document": {
+            "Name": "New document",
+            "Exec": "margin --new"
+          }
+        }
+      }
     },
     "mac": {
-      "target": "dmg",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.productivity",
+      "icon": "build/icon-mac.png",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "darkModeSupport": true,
+      "minimumSystemVersion": "12.0",
       "artifactName": "${productName}-${arch}.${ext}"
     },
     "win": {
-      "target": "nsis"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
     },
     "publish": {
       "provider": "github",
       "releaseType": "release"
     },
     "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Margin",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
       "artifactName": "${productName}-Setup.${ext}"
+    },
+    "copyright": "Copyright © PyMite6941",
+    "fileAssociations": [
+      {
+        "ext": [
+          "md",
+          "markdown"
+        ],
+        "name": "Markdown document",
+        "description": "Markdown document",
+        "mimeType": "text/markdown",
+        "role": "Editor",
+        "rank": "Default"
+      },
+      {
+        "ext": "txt",
+        "name": "Plain text",
+        "description": "Plain text",
+        "mimeType": "text/plain",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "html",
+          "htm"
+        ],
+        "name": "HTML document",
+        "description": "HTML document",
+        "mimeType": "text/html",
+        "role": "Editor",
+        "rank": "Alternate"
+      }
+    ],
+    "dmg": {
+      "title": "Margin",
+      "writeUpdateInfo": false
     }
   },
   "devDependencies": {
