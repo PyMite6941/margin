@@ -177,7 +177,7 @@
   <tr><td>Appearance</td><td>Theme, typeface, text size, line width, line spacing</td></tr>
   <tr><td>Editor</td><td>Spell check; wrap long lines or scroll sideways; continue lists on Enter; close brackets, quotes and HTML tags as you type; whether Tab inserts 2 spaces, 4 spaces or a tab</td></tr>
   <tr><td>Documents</td><td>The type new documents start as; sort the list by last edited, newest or title; ask before moving to the trash; <strong>Keep saved files up to date</strong>, which writes your edits back to a file you opened or saved, as you type (desktop apps, Chrome and Edge)</td></tr>
-  <tr><td>AI</td><td>Your own provider, with a <strong>Test connection</strong> button. See AI below</td></tr>
+  <tr><td>AI</td><td>Your AI accounts: keys, subscriptions, free tiers and local models, with usage, limits and automatic switching. See AI below</td></tr>
   <tr><td>Backup</td><td>How much is stored here; export every document to one <code>.json</code> file, import a backup (documents you already have are skipped), clear version history, or delete everything</td></tr>
   <tr><td>Keys</td><td>Every keyboard shortcut</td></tr>
 </table>
@@ -194,14 +194,36 @@
 <p>The document list, the trash and version history are stored on the device by the browser (or by the desktop app). They stay private, and it also means they go away if you clear site data or use a private window. For anything you want to keep, use <strong>Save</strong>, or export a backup from Settings.</p>
 
 <h2 id="ai">AI (optional)</h2>
-<p>Margin has no AI of its own and none is on by default. If you want it, open Settings and fill in the AI section with whatever provider you use:</p>
+<p>Margin has no AI of its own and none is on by default. If you want it, open <strong>Settings → AI</strong> and add an <strong>account</strong>: a service, a model, and its key or token. You can add as many as you like and switch between them.</p>
 <table>
-  <tr><th>Format</th><th>Works with</th></tr>
-  <tr><td>OpenAI-compatible</td><td>OpenAI, OpenRouter, Groq, Mistral, DeepSeek, Together, and local models through Ollama (<code>http://localhost:11434/v1</code>), LM Studio (<code>http://localhost:1234/v1</code>) or llama.cpp</td></tr>
-  <tr><td>Anthropic</td><td>Claude models</td></tr>
+  <tr><th>Kind of account</th><th>Services</th></tr>
+  <tr><td>Pay as you go</td><td>OpenAI, Anthropic, OpenRouter, Mistral, or any other OpenAI- or Anthropic-compatible address (Together, DeepSeek, a company gateway…)</td></tr>
+  <tr><td>Subscription</td><td>GitHub Models: the AI requests included with a GitHub account, with higher daily limits on Copilot plans. Use a fine-grained GitHub token with the <em>Models: read</em> permission</td></tr>
+  <tr><td>Free tier</td><td>Google Gemini (an AI Studio key), Groq, OpenRouter's free models</td></tr>
+  <tr><td>On this computer</td><td>Ollama or LM Studio. No key needed</td></tr>
 </table>
-<p>Once a model is named, an <strong>AI</strong> button appears. Select some text (or nothing, for the whole document), press <kbd>Ctrl</kbd> <kbd>J</kbd>, say what should happen, and press <kbd>Enter</kbd>. The reply replaces the text; <kbd>Ctrl</kbd> <kbd>Z</kbd> undoes it, and the text from before is in version history too. Clear the model field to turn AI off again.</p>
-<p>Your key is stored on this device only and sent only to the address you entered. In a browser, some providers refuse direct requests from web pages; the desktop apps do not have that limit. For Ollama in a browser, start it with <code>OLLAMA_ORIGINS</code> set to this site's address.</p>
+<p>Chat-app subscriptions such as ChatGPT Plus, Claude Pro or Gemini in Google's plans don't include API access, so other apps can't use them. To use those companies' models, add an API key from their developer platform instead.</p>
+<h3>Usage and limits</h3>
+<p>Each account shows how many requests it has made today and this month, and how many tokens it has used. Give an account a <strong>limit</strong> — requests or tokens, per day or per month — to match your plan's allowance or a budget of your own; a bar shows how close it is, and at the limit Margin stops using it. The radio button picks the account in use.</p>
+<p>With more than one account, turn on <strong>Switch accounts automatically</strong>: when the account in use reaches its limit, runs out of credit, is rate-limited or refused, Margin tries the next one, makes it the account in use, and says so in the status bar.</p>
+<h3>The .env file</h3>
+<p>Accounts and keys are kept in a <code>.env</code> file, one block of lines per account:</p>
+<pre><code>MARGIN_AI_ACTIVE=COPILOT
+MARGIN_AI_SERVICE_COPILOT=github
+MARGIN_AI_MODEL_COPILOT=openai/gpt-4.1
+MARGIN_AI_KEY_COPILOT=github_pat_…
+MARGIN_AI_PLAN_COPILOT=subscription
+MARGIN_AI_LIMIT_COPILOT="150 requests/day"</code></pre>
+<table>
+  <tr><th>App</th><th>Where the file is</th></tr>
+  <tr><td>Desktop app</td><td>The app's data folder: <code>%APPDATA%\Margin\.env</code> on Windows, <code>~/Library/Application Support/Margin/.env</code> on macOS, <code>~/.config/Margin/.env</code> on Linux. <strong>Show the .env file</strong> opens it</td></tr>
+  <tr><td>Java window</td><td><code>~/.margin/.env</code></td></tr>
+  <tr><td>Browser</td><td>Kept in this browser in the same format. <strong>Download .env</strong> saves a copy; <strong>Load accounts from a .env</strong> adds the accounts in a file, for example to move them to the desktop app</td></tr>
+</table>
+<p>You can edit the file yourself; Margin rereads it whenever Settings opens, and leaves any other lines in it alone. The file is readable only by you on macOS and Linux. Each key is sent only to its own account's address. Treat a downloaded <code>.env</code> like a password.</p>
+<h3>Asking</h3>
+<p>Once an account with a model is in use, an <strong>AI</strong> button appears. Select some text (or nothing, for the whole document), press <kbd>Ctrl</kbd> <kbd>J</kbd>, say what should happen, and press <kbd>Enter</kbd>. The reply replaces the text; <kbd>Ctrl</kbd> <kbd>Z</kbd> undoes it, and the text from before is in version history too. <strong>Test</strong> beside an account checks it without switching.</p>
+<p>In a browser, some services refuse direct requests from web pages; the desktop apps do not have that limit. For Ollama in a browser, start it with <code>OLLAMA_ORIGINS</code> set to this site's address.</p>
 
 <h2 id="google-docs">Compared with Google Docs</h2>
 <p>Margin borrows the Google Docs features that work without a server, and leaves out the ones that need one.</p>

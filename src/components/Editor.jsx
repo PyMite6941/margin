@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ask } from '../lib/ai.js';
 import { autoPair, continueList, findNext, heading, indent, link, listify, matches, pattern, replace, replaceAll, replaceOne, unpair, wrap } from '../lib/editing.js';
 
 const INDENT = { 2: '  ', 4: '    ', tab: '\t' };
@@ -50,7 +49,7 @@ function FindBar({ ta, text, onClose, onCheckpoint }) {
 
 // One instruction to the user's own AI. It works on the selection, or the whole document
 // when nothing is selected, and the reply replaces that text (Ctrl+Z undoes it).
-function AiBar({ ta, cfg, onClose, onCheckpoint }) {
+function AiBar({ ta, askAI, onClose, onCheckpoint }) {
   const [instruction, setInstruction] = useState('');
   const [note, setNote] = useState('');
   const job = useRef(null);
@@ -64,7 +63,7 @@ function AiBar({ ta, cfg, onClose, onCheckpoint }) {
     job.current = new AbortController();
     setNote('Working…');
     try {
-      const reply = await ask(cfg, instruction.trim(), text, job.current.signal);
+      const reply = await askAI(instruction.trim(), text, job.current.signal);
       if (ta.value.slice(from, to) !== text) throw new Error('The text changed while waiting, so nothing was replaced');
       onCheckpoint();
       replace(ta, from, to, reply);
@@ -134,7 +133,7 @@ export default function Editor({ taRef: ref, doc, mode, prefs, barSlot, onChange
   }
 
   const bar = (finding && !asking && <FindBar ta={ref.current} text={doc.text} onClose={closeFind} onCheckpoint={onCheckpoint} />)
-    || (asking && ai && <AiBar ta={ref.current} cfg={ai} onClose={closeAsk} onCheckpoint={onCheckpoint} />);
+    || (asking && ai && <AiBar ta={ref.current} askAI={ai} onClose={closeAsk} onCheckpoint={onCheckpoint} />);
   return (<>
     {bar && barSlot && createPortal(bar, barSlot)}
     <textarea

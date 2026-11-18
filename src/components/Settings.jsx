@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { FORMATS } from '../lib/ai.js';
+import Accounts from './Accounts.jsx';
 import { MODES } from '../lib/modes.js';
 import { TRASH_DAYS } from '../lib/storage.js';
 
@@ -10,7 +10,7 @@ const TABS = ['Appearance', 'Editor', 'Documents', 'AI', 'Backup', 'Keys'];
 
 export const KEYS = [
   ['Ctrl S', 'Save to a file'], ['Ctrl O', 'Open a file'], ['Ctrl F', 'Find and replace'],
-  ['Ctrl Shift H', 'Version history'], ['Ctrl J', 'Ask AI (once set up)'], ['Ctrl ,', 'Settings'], ['Ctrl P', 'Print or save as PDF'],
+  ['Ctrl Shift H', 'Version history'], ['Ctrl J', 'Ask AI (once an account is added)'], ['Ctrl ,', 'Settings'], ['Ctrl P', 'Print or save as PDF'],
   ['Ctrl B / I', 'Bold or italic (Markdown)'], ['Ctrl Shift X', 'Strikethrough (Markdown)'], ['Ctrl K', 'Insert a link'],
   ['Ctrl Alt 1-6', 'Heading level (Markdown); Ctrl Alt 0 for normal text'],
   ['Ctrl Shift 7 / 8 / 9', 'Numbered, bulleted or check list (Markdown)'], ['Shift Alt F', 'Tidy HTML'],
@@ -41,22 +41,14 @@ const Slider = ({ label, value, min, max, step = 1, unit = '', onChange }) => (
 
 const kb = bytes => (bytes < 1024 ? `${bytes} bytes` : bytes < 1048576 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1048576).toFixed(2)} MB`);
 
-export default function Settings({ open, onClose, prefs, setPref, onReset, ai, setAIField, onTestAI, backup }) {
+export default function Settings({ open, onClose, prefs, setPref, onReset, accounts, onTestAI, backup }) {
   const ref = useRef(null);
   const [tab, setTab] = useState('Appearance');
-  const [test, setTest] = useState('');
   useEffect(() => {
     const d = ref.current;
     if (open && !d.open) d.showModal();
     if (!open && d.open) d.close();
   }, [open]);
-  useEffect(() => setTest(''), [ai.format, ai.url, ai.model, ai.key]);
-
-  async function runTest() {
-    setTest('Testing…');
-    try { setTest(`Connected. The model replied: “${(await onTestAI()).trim().slice(0, 80)}”`); }
-    catch (err) { setTest(`Failed: ${err.message}`); }
-  }
 
   const set = key => value => setPref(key, value);
 
@@ -100,16 +92,7 @@ export default function Settings({ open, onClose, prefs, setPref, onReset, ai, s
           </section>}
 
           {tab === 'AI' && <section>
-            <p className="hint">Optional and off until you name a model. Use any provider you like: the key stays on this device and is sent only to the address below.</p>
-            <Choice label="Format" value={ai.format} onChange={v => setAIField('format', v)} options={Object.entries(FORMATS).map(([k, f]) => [k, f.label])} />
-            <p className="hint">{FORMATS[ai.format].hint}</p>
-            <label>Address <input type="url" placeholder={FORMATS[ai.format].url} value={ai.url} onChange={e => setAIField('url', e.target.value)} /></label>
-            <label>Model <input placeholder="Leave empty to turn AI off" value={ai.model} onChange={e => setAIField('model', e.target.value)} /></label>
-            <label>API key <input type="password" autoComplete="off" placeholder="Not needed for local models" value={ai.key} onChange={e => setAIField('key', e.target.value)} /></label>
-            <div className="row">
-              <button className="btn" disabled={!ai.model.trim()} onClick={runTest}>Test connection</button>
-              <span className="hint" role="status">{test}</span>
-            </div>
+            <Accounts ring={accounts} onTest={onTestAI} />
           </section>}
 
           {tab === 'Backup' && <section>

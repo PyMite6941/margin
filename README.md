@@ -86,9 +86,13 @@ The guide has a [comparison with Google Docs](https://pymite6941.github.io/margi
 
 ## AI, bring your own
 
-Margin ships no AI and none runs by default. In Settings → AI you can point it at any provider: anything with an OpenAI-compatible `/chat/completions` endpoint (OpenAI, OpenRouter, Groq, Mistral, Ollama, LM Studio, llama.cpp…) or the Anthropic Messages API. Once a model is named, one **AI** button (Ctrl+J) appears: give an instruction and the reply replaces the selection, or the whole document. Ctrl+Z undoes it.
+Margin ships no AI and none runs by default. In Settings → AI you add **accounts**: pay-as-you-go API keys (OpenAI, Anthropic, OpenRouter, Mistral, any OpenAI- or Anthropic-compatible address), subscription allowances that include API access (GitHub Models, with higher limits on Copilot plans), free tiers (Gemini via AI Studio, Groq) and local models (Ollama, LM Studio). Each account has its own model, a usage count (requests today and this month, tokens), an optional limit (requests or tokens, per day or month), and you pick which is in use. With automatic switching on, a used-up, rate-limited or refused account hands over to the next. Chat-app subscriptions (ChatGPT Plus, Claude Pro) have no API access, so they cannot be connected.
 
-Keep it that way. **No AI bloat:** no SDKs, no chat panel, no background calls, no AI anywhere unless the user turned it on. All of it lives in `src/lib/ai.js` (one `fetch`) and the `AiBar` in `src/components/Editor.jsx`. The key stays in `localStorage` and goes only to the address the user typed. The desktop shells pass requests through `window.desktop.request`, so local servers and providers without CORS work there.
+Accounts and keys live in a `.env` file (`MARGIN_AI_<FIELD>_<NAME>` lines, editable by hand): the app data folder for the Electron app (`%APPDATA%\Margin\.env`, `~/Library/Application Support/Margin/.env`, `~/.config/Margin/.env`), `~/.margin/.env` for the Java window, and the same text in `localStorage` in a browser, with download and load buttons. `.env` files are git-ignored.
+
+Once an account with a model is in use, one **AI** button (Ctrl+J) appears: give an instruction and the reply replaces the selection, or the whole document. Ctrl+Z undoes it.
+
+Keep it that way. **No AI bloat:** no SDKs, no chat panel, no background calls, no AI anywhere unless the user turned it on. All of it lives in `src/lib/ai.js` (services and one `fetch`), `src/lib/keys.js` (accounts, the `.env` file, usage), `src/components/Accounts.jsx` and the `AiBar` in `src/components/Editor.jsx`. A key goes only to its own account's address. The desktop shells pass requests through `window.desktop.request`, so local servers and providers without CORS work there.
 
 ## Develop
 
@@ -125,7 +129,9 @@ One React app, three ways to run it. The web build is what GitHub Pages serves. 
 | `src/lib/modes.js` | Document types (Markdown, HTML, plain text) and their extensions. **Add new file types here** |
 | `src/lib/files.js` | Opening and saving files |
 | `src/lib/tidy.js` | HTML indenter behind Tidy |
-| `src/lib/ai.js` | Optional bring-your-own AI. Keep it small |
+| `src/lib/ai.js` | Optional bring-your-own AI: services and the request. Keep it small |
+| `src/lib/keys.js`, `src/lib/env.js` | AI accounts in a `.env` file, usage and limits, switching |
+| `src/components/Accounts.jsx` | Settings → AI |
 | `src/components/Settings.jsx` | The settings dialog behind the gear. New preferences also need a default in `DEFAULT_PREFS` (`src/lib/storage.js`) |
 | `src/lib/storage.js` | Documents (including the trash) and preferences in `localStorage` |
 | `src/lib/editing.js` | Formatting shortcuts, indenting, lists, links, headings, find and replace |

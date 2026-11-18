@@ -50,7 +50,13 @@ public class Margin extends Application {
               waiting.set(id, { ok, fail });
               j.request(id, r.method || 'POST', r.url, Object.entries(r.headers || {}).flat().join('\\n'), r.body || '');
             }),
+            env: {
+              read: () => call(() => j.readEnv()),
+              write: text => call(() => j.writeEnv(text)),
+              reveal: () => call(() => j.revealEnv()),
+            },
           };
+          dispatchEvent(new Event('desktop-ready'));
         })();
         """;
 
@@ -161,6 +167,37 @@ public class Margin extends Application {
                 }
                 Files.writeString(p, text, StandardCharsets.UTF_8);
                 return "{\"path\":" + json(p.toString()) + ",\"name\":" + json(p.getFileName().toString()) + "}";
+            } catch (Exception e) { return error(e); }
+        }
+
+        // The AI accounts' .env file (src/lib/keys.js): ~/.margin/.env, the only file the page
+        // can reach without a dialog. Owner-only permissions where the file system has them.
+        private Path envFile() { return Path.of(System.getProperty("user.home"), ".margin", ".env"); }
+
+        public String readEnv() {
+            try {
+                Path p = envFile();
+                String text = Files.exists(p) ? Files.readString(p, StandardCharsets.UTF_8) : "";
+                return "{\"path\":" + json(p.toString()) + ",\"text\":" + json(text) + "}";
+            } catch (Exception e) { return error(e); }
+        }
+
+        public String writeEnv(String text) {
+            try {
+                if (text == null || text.length() > 1_000_000) throw new IllegalArgumentException("Not a .env file");
+                Path p = envFile();
+                Files.createDirectories(p.getParent());
+                Files.writeString(p, text, StandardCharsets.UTF_8);
+                try { Files.setPosixFilePermissions(p, java.nio.file.attribute.PosixFilePermissions.fromString("rw-------")); }
+                catch (UnsupportedOperationException windows) { /* Windows: the user folder is already private */ }
+                return "{\"path\":" + json(p.toString()) + "}";
+            } catch (Exception e) { return error(e); }
+        }
+
+        public String revealEnv() {
+            try {
+                getHostServices().showDocument(envFile().getParent().toUri().toString());
+                return "{}";
             } catch (Exception e) { return error(e); }
         }
 

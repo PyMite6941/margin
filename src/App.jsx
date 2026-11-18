@@ -5,7 +5,8 @@ import History from './components/History.jsx';
 import Menu from './components/Menu.jsx';
 import Settings from './components/Settings.jsx';
 import Sidebar from './components/Sidebar.jsx';
-import { aiReady, ask, loadAI, saveAI } from './lib/ai.js';
+import { SERVICES, ask, loadAI, saveAI } from './lib/ai.js';
+import { ENV_FILE, accountProblem, accountsIn, count as amount, forgetUsage, loadUsage, mergeAccounts, overLimit, readEnv, record, removeAccount, saveAccount, saveUsage, setActive, writeEnv } from './lib/keys.js';
 import { goTo, replace, toggleTask } from './lib/editing.js';
 import { plainExport, webPage } from './lib/exporting.js';
 import { canWriteSilently, exportText, forgetHandle, grantPath, importText, isTextFile, linkHandle, openFile, saveFile } from './lib/files.js';
@@ -56,6 +57,9 @@ export default function App() {
   const [id, setId] = useState(loadLastId);
   const [prefs, setPrefs] = useState(loadPrefs);
   const [ai, setAI] = useState(loadAI);
+  const [env, setEnv] = useState({ path: null, text: '' });   // the AI accounts' .env file (keys.js)
+  const [usage, setUsage] = useState(loadUsage);
+  const ring = useMemo(() => accountsIn(env.text), [env.text]);
   const [history, setHistory] = useState(loadHistory);
   const [focus, setFocus] = useState(false);
   const [printing, setPrinting] = useState(false);
@@ -75,7 +79,8 @@ export default function App() {
   const mode = modeOf(doc);
   const words = useMemo(() => count(plainText(doc)), [doc.text, mode]);
   const selected = cursor.to > cursor.from ? count(doc.text.slice(cursor.from, cursor.to)) : 0;
-  const aiOn = aiReady(ai);
+  const account = ring.accounts.find(a => a.name === ring.active);
+  const aiOn = Boolean(account?.model);
   const outlineOn = prefs.outline && (mode === 'md' || (mode === 'html' && prefs.view !== 'read'));
   const outline = useMemo(() => (outlineOn ? headings(doc.text, mode) : []), [outlineOn, doc.text, mode]);
   const activeHeading = outline.findLastIndex(h => h.index <= cursor.from);
@@ -87,7 +92,6 @@ export default function App() {
     if (text && opt !== true) noteTimer.current = setTimeout(() => setNote({ text: '' }), typeof opt === 'object' ? 8000 : 3000);
   }
   const setPref = (key, value) => setPrefs(p => ({ ...p, [key]: value }));
-  const setAIField = (key, value) => setAI(c => ({ ...c, [key]: value }));
   const resetPrefs = () => setPrefs(p => ({ ...p, ...DEFAULT_PREFS }));
   const patch = (change, target = doc.id) => setDocs(all => all.map(d => (d.id === target ? { ...d, ...change } : d)));
 
@@ -153,6 +157,88 @@ export default function App() {
     if (!confirm('Clear the version history of every document? The documents themselves are kept.')) return;
     setHistory({});
   }
+
+  // AI accounts live in a .env file (keys.js). Changes rewrite it at once; Settings rereads it
+  // when it opens, so edits made to the file by hand show up. envText is the latest text, so
+  // two quick changes do not overwrite each other.
+  const envText = useRef(null);
+  async function reloadEnv() {
+    try {
+      const r = await readEnv();
+      envText.current = r.text || '';
+      setEnv({ path: r.path, text: envText.current });
+      return envText.current;
+    } catch (err) {
+      say(`Could not read the .env file: ${err.message}`);
+      return null;
+    }
+  }
+  async function changeEnv(edit) {
+    if (envText.current == null && (await reloadEnv()) == null) return;
+    const text = edit(envText.current);
+    envText.current = text;
+    setEnv(e => ({ ...e, text }));
+    try { const r = await writeEnv(text); if (r?.path) setEnv(e => ({ ...e, path: r.path })); }
+    catch (err) { say(`Could not write the .env file: ${err.message}`, true); }
+  }
+
+  // One AI request with the account in use. With automatic switching, a used-up or refused
+  // account hands over to the next, which then becomes the one in use.
+  async function askAI(instruction, text, signal, only) {
+    const first = only || account;
+    const order = only || !ai.autoSwitch ? [first] : [first, ...ring.accounts.filter(a => a !== first && a.model)];
+    const reasons = [];   // why each account could not be used, for the message if none can
+    for (const a of order) {
+      if (!a) throw new Error('Add an AI account in Settings → AI');
+      if (overLimit(usage, a) && !only) {
+        reasons.push(`${a.name} has reached its limit of ${amount(a.limit.count)} ${a.limit.unit} a ${a.limit.per}.`);
+        continue;
+      }
+      try {
+        const reply = await ask(a, instruction, text, signal);
+        setUsage(u => record(u, a.name, { tokens: reply.tokens }));
+        if (a !== first) { changeEnv(t => setActive(t, a.name)); say(`${first.name} could not be used, so Margin switched to ${a.name}`); }
+        return reply.text;
+      } catch (err) {
+        if (err.name === 'AbortError') throw err;
+        setUsage(u => record(u, a.name, { error: err.message }));
+        if (only || !ai.autoSwitch || !accountProblem(err)) throw order.length > 1 ? Object.assign(new Error(`${a.name}: ${err.message}`), { status: err.status }) : err;
+        reasons.push(`${a.name}: ${err.message}.`.replace(/\.\.$/, '.'));
+      }
+    }
+    throw new Error(order.length > 1
+      ? `No account could be used. ${reasons.join(' ')}`
+      : `${reasons[0]} Pick another account or raise the limit in Settings → AI, or turn on automatic switching.`);
+  }
+
+  const accounts = {
+    ...ring, path: env.path, usage, autoSwitch: ai.autoSwitch, desktop: Boolean(window.desktop?.env),
+    onSave: (a, previous) => {
+      changeEnv(t => saveAccount(t, a, previous));
+      if (previous && previous !== a.name) setUsage(u => ({ ...forgetUsage(u, previous), ...(u[previous] && { [a.name]: u[previous] }) }));
+    },
+    onRemove: name => {
+      if (!confirm(`Remove the ${name} account and its key from the .env file?`)) return;
+      changeEnv(t => removeAccount(t, name));
+      setUsage(u => forgetUsage(u, name));
+    },
+    onActive: name => changeEnv(t => setActive(t, name)),
+    onAutoSwitch: on => setAI(c => ({ ...c, autoSwitch: on })),
+    onReveal: () => window.desktop.env.reveal(),
+    onDownload: async () => {
+      try { const name = await exportText(envText.current || '', 'margin.env', ENV_FILE); if (name) say(`Saved ${name}. It holds your keys: keep it private.`); }
+      catch (err) { say(`Could not save: ${err.message}`); }
+    },
+    onLoad: async () => {
+      try {
+        const text = await importText(ENV_FILE);
+        if (text == null) return;
+        let n = 0;
+        await changeEnv(t => { const m = mergeAccounts(t, text); n = m.count; return m.text; });
+        say(n ? `Loaded ${n} ${n === 1 ? 'account' : 'accounts'}` : 'That file has no Margin accounts in it');
+      } catch (err) { say(`Could not load: ${err.message}`); }
+    },
+  };
 
   // Rewrite the whole document through the textarea so Ctrl+Z can undo it.
   const rewrite = text => replace(ta.current, 0, ta.current.value.length, text);
@@ -251,6 +337,7 @@ export default function App() {
   }, [doc.text, prefs.autoWrite]);
   useEffect(() => { saveLastId(doc.id); setCursor({ line: 1, col: 1, from: 0, to: 0 }); }, [doc.id]);
   useEffect(() => { saveAI(ai); }, [ai]);
+  useEffect(() => { saveUsage(usage); }, [usage]);
   useEffect(() => {
     savePrefs(prefs);
     const root = document.documentElement;
@@ -290,6 +377,28 @@ export default function App() {
     for (const [name, fn] of events) addEventListener(name, fn);
     return () => { for (const [name, fn] of events) removeEventListener(name, fn); };
   }, []);
+
+  // Load the AI accounts, and move a key saved by an older version (one account in
+  // localStorage) into the .env file. The Java window adds window.desktop after the page has
+  // started, so there it waits for desktop-ready rather than reading the browser copy.
+  useEffect(() => {
+    const load = async () => {
+      const text = await reloadEnv();
+      const { format, url, model, key, ...rest } = loadAI();
+      if (text == null || !(model || key)) return;
+      if (!accountsIn(text).accounts.some(a => a.key === key && a.model === model)) {
+        const service = format === 'anthropic' ? (url && url !== SERVICES.anthropic.url ? 'custom-anthropic' : 'anthropic') : (url && url !== SERVICES.openai.url ? 'custom' : 'openai');
+        await changeEnv(t => saveAccount(t, { name: 'MAIN', service, model: model || '', key: key || '', url: url || '', plan: SERVICES[service].plan, limit: null }));
+      }
+      setAI(rest);
+      saveAI(rest);
+    };
+    const javaWindow = !window.desktop && /JavaFX/.test(navigator.userAgent);
+    if (!javaWindow) load();
+    addEventListener('desktop-ready', load);
+    return () => removeEventListener('desktop-ready', load);
+  }, []);
+  useEffect(() => { if (settings) reloadEnv(); }, [settings]);
 
   // Requests from outside the page: the desktop shell (files opened from the system, New
   // document from the taskbar jump list or Dock, the macOS menu bar), or, for the installed
@@ -338,7 +447,7 @@ export default function App() {
             {Object.entries(MODES).map(([k, m]) => <option key={k} value={k}>{m.label}</option>)}
           </select>
           {mode === 'html' && <button onClick={tidyDoc} title="Indent the HTML tags (Shift+Alt+F)">Tidy</button>}
-          {aiOn && <button onClick={() => setAsking(a => !a)} title="Ask AI (Ctrl+J)">AI</button>}
+          {aiOn && <button onClick={() => setAsking(a => !a)} title={`Ask AI (Ctrl+J), using ${account.name}`}>AI</button>}
           <button onClick={open} title="Open a file (Ctrl+O)">Open</button>
           <button onClick={() => save()} title="Save to a file (Ctrl+S)">Save</button>
           <button onClick={cycleView} title="Switch view (Alt+P)">{prefs.view[0].toUpperCase() + prefs.view.slice(1)}</button>
@@ -361,7 +470,7 @@ export default function App() {
           <div id="panes">
             <Editor
               taRef={ta} doc={doc} mode={mode} prefs={prefs} barSlot={barSlot} onChange={text => patch({ text, updated: Date.now() })} onCursor={setCursor}
-              onCheckpoint={() => checkpoint()} ai={aiOn ? ai : null} asking={asking} setAsking={setAsking}
+              onCheckpoint={() => checkpoint()} ai={aiOn ? askAI : null} asking={asking} setAsking={setAsking}
             />
             <Preview doc={doc} mode={mode} show={prefs.view !== 'write' || printing} onTask={line => toggleTask(ta.current, line)} />
           </div>
@@ -378,7 +487,7 @@ export default function App() {
 
       <Settings
         open={settings} onClose={() => setSettings(false)} prefs={prefs} setPref={setPref} onReset={resetPrefs}
-        ai={ai} setAIField={setAIField} onTestAI={() => ask(ai, 'Reply with exactly one word: ready', 'ready')}
+        accounts={accounts} onTestAI={a => askAI('Reply with exactly one word: ready', 'ready', undefined, a)}
         backup={{ count: live.length, bytes: storedBytes, historyBytes, onExport: exportAll, onImport: importAll, onDeleteAll: deleteAll, onClearHistory: clearHistory }}
       />
       <History

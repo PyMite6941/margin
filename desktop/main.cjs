@@ -129,6 +129,27 @@ ipcMain.handle('file:save', async (event, { path: wanted, name, text, filters })
   return { path: file, name: path.basename(file) };
 });
 
+// The AI accounts' .env file (src/lib/keys.js): one fixed file in the app's data folder, so the
+// page can read and write it but no other path. Owner-only permissions on macOS and Linux.
+const envFile = () => path.join(app.getPath('userData'), '.env');
+ipcMain.handle('env:read', async () => {
+  const file = envFile();
+  try { return { path: file, text: await fs.promises.readFile(file, 'utf8') }; }
+  catch (err) { if (err.code === 'ENOENT') return { path: file, text: '' }; throw err; }
+});
+ipcMain.handle('env:write', async (event, text) => {
+  if (typeof text !== 'string' || text.length > 1e6) throw new Error('Not a .env file');
+  const file = envFile();
+  await fs.promises.mkdir(path.dirname(file), { recursive: true });
+  await fs.promises.writeFile(file, text, { encoding: 'utf8', mode: 0o600 });
+  if (process.platform !== 'win32') await fs.promises.chmod(file, 0o600);
+  return { path: file };
+});
+ipcMain.handle('env:reveal', async () => {
+  const file = envFile();
+  if (fs.existsSync(file)) shell.showItemInFolder(file); else await shell.openPath(path.dirname(file));
+});
+
 // Used only by the optional AI feature (src/lib/ai.js), to reach the provider the user configured.
 ipcMain.handle('net:request', async (event, { method, url, headers, body }) => {
   if (!/^https?:\/\//i.test(url)) throw new Error('Only http and https addresses are allowed');

@@ -4,3 +4,5 @@ release/
 .DS_Store
 java/lib/
 java/build/
+.env
+*.env
