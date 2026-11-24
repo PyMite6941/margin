@@ -51,6 +51,7 @@
   <a href="#ai">AI (optional)</a>
   <a href="#google-docs">Compared with Google Docs</a>
   <a href="#desktop">Desktop apps</a>
+  <a href="#uninstall">Uninstall</a>
 </nav>
 
 <h2 id="basics">How it works</h2>
@@ -178,7 +179,7 @@
   <tr><td>Editor</td><td>Spell check; wrap long lines or scroll sideways; continue lists on Enter; close brackets, quotes and HTML tags as you type; whether Tab inserts 2 spaces, 4 spaces or a tab</td></tr>
   <tr><td>Documents</td><td>The type new documents start as; sort the list by last edited, newest or title; ask before moving to the trash; <strong>Keep saved files up to date</strong>, which writes your edits back to a file you opened or saved, as you type (desktop apps, Chrome and Edge)</td></tr>
   <tr><td>AI</td><td>Your AI accounts: keys, subscriptions, free tiers and local models, with usage, limits and automatic switching. See AI below</td></tr>
-  <tr><td>Backup</td><td>How much is stored here; export every document to one <code>.json</code> file, import a backup (documents you already have are skipped), clear version history, or delete everything</td></tr>
+  <tr><td>Backup</td><td>How much is stored here; export every document to one <code>.json</code> file, import a backup (documents you already have are skipped), clear version history, delete all documents, or <strong>Remove everything</strong> Margin keeps (documents, history, settings, AI accounts and keys)</td></tr>
   <tr><td>Keys</td><td>Every keyboard shortcut</td></tr>
 </table>
 <p>Everything applies at once. The link at the bottom resets the settings, but never your documents or AI setup.</p>
@@ -263,5 +264,29 @@ npm install
 npm run desktop    # Electron
 npm run java       # Java window</code></pre>
 <p>The <a href="https://github.com/PyMite6941/margin#readme">README</a> covers development and building an installer.</p>
+
+<h2 id="uninstall">Uninstall</h2>
+<p>Uninstalling removes the app. What you wrote stays on the computer until you remove it too, so reinstalling brings it back. Files you saved yourself (<code>.md</code>, <code>.txt</code>, <code>.html</code>, backups) are never touched.</p>
+<p><strong>To leave nothing behind</strong>, first export a backup if you want one, then use <strong>Settings → Backup → Remove everything</strong>. That deletes the documents, version history, settings and AI accounts with their keys from the app or browser you are in. Then uninstall:</p>
+<table>
+  <tr><th>Installed with</th><th>To uninstall</th></tr>
+  <tr><td>Windows installer</td><td><strong>Settings → Apps → Installed apps → Margin → Uninstall</strong>. It asks whether to delete your documents and keys as well; the default is to keep them. Shortcuts, file types and the start-menu entry go with the app</td></tr>
+  <tr><td>macOS</td><td>Quit Margin and drag it from Applications to the Trash</td></tr>
+  <tr><td>Debian, Ubuntu (<code>.deb</code>)</td><td><code>sudo apt remove margin</code></td></tr>
+  <tr><td>AppImage</td><td>Delete the <code>.AppImage</code> file</td></tr>
+  <tr><td>Java window</td><td>Delete the unzipped folder</td></tr>
+  <tr><td>Browser, installed as an app</td><td>In Margin's window, open the browser menu (⋮ or …) and choose <strong>Uninstall Margin</strong>. Not installed: nothing to do. Use Remove everything rather than clearing the site's data, which would also clear other sites on <code>pymite6941.github.io</code></td></tr>
+</table>
+<h3>From a terminal</h3>
+<p>These remove the app <em>and</em> everything Margin kept, without asking. Export a backup first if you want your documents.</p>
+<table>
+  <tr><th>System</th><th>Command</th></tr>
+  <tr><td>Windows (PowerShell)</td><td><code>Start-Process "$env:LOCALAPPDATA\Programs\margin\Uninstall Margin.exe" -ArgumentList '/S','--delete-app-data' -Wait</code><br>Without <code>--delete-app-data</code> your documents and keys are kept</td></tr>
+  <tr><td>macOS</td><td><code>rm -rf /Applications/Margin.app ~/Library/Application\ Support/Margin ~/Library/Preferences/io.github.pymite6941.margin.plist ~/Library/Saved\ Application\ State/io.github.pymite6941.margin.savedState ~/Library/Logs/Margin</code></td></tr>
+  <tr><td>Debian, Ubuntu</td><td><code>sudo apt remove -y margin &amp;&amp; rm -rf ~/.config/Margin</code></td></tr>
+  <tr><td>AppImage</td><td><code>rm -f Margin.AppImage &amp;&amp; rm -rf ~/.config/Margin</code></td></tr>
+  <tr><td>Java window</td><td>Delete the folder, then <code>rm -rf ~/.margin</code> (Windows: <code>Remove-Item -Recurse -Force "$HOME\.margin"</code>)</td></tr>
+</table>
+<p>Where each keeps its data, if you would rather look first: <code>%APPDATA%\Margin</code> on Windows, <code>~/Library/Application Support/Margin</code> on macOS, <code>~/.config/Margin</code> on Linux, and <code>~/.margin</code> for the Java window. The AI accounts' <code>.env</code> file is in the same folder.</p>
 </body>
 </html>

@@ -107,6 +107,10 @@ export default function Settings({ open, onClose, prefs, setPref, onReset, accou
               <button className="btn" onClick={backup.onClearHistory}>Clear version history…</button>
               <button className="btn" onClick={backup.onDeleteAll}>Delete all documents…</button>
             </div>
+            <p className="hint">Before uninstalling, or to leave nothing behind: <strong>Remove everything</strong> also deletes settings and AI accounts with their keys{window.desktop ? '' : ', and the offline copy of Margin'}. See <a href="docs/#uninstall" target="_blank" rel="noopener">Uninstall</a> in the guide.</p>
+            <div className="row danger">
+              <button className="btn" onClick={backup.onRemoveEverything}>Remove everything…</button>
+            </div>
           </section>}
 
           {tab === 'Keys' && <section>

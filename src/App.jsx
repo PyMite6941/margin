@@ -153,6 +153,22 @@ export default function App() {
     setHistory({});
     setSettings(false);
   }
+  // Everything Margin keeps where it runs, before uninstalling or handing the device on:
+  // documents, history, settings, AI accounts and keys, and in a browser the offline copy.
+  // Only Margin's own storage, since the web version shares its site with other pages.
+  async function removeEverything() {
+    const where = window.desktop ? 'app' : 'browser';
+    if (!confirm(`Remove everything Margin keeps in this ${where}: all documents, version history, settings, and AI accounts with their keys? Files you saved are not touched. This cannot be undone.`)) return;
+    await (envQueue.current = envQueue.current.then(() => writeEnv('')).catch(() => {}));
+    try { for (const k of Object.keys(localStorage)) if (k.startsWith('margin.')) localStorage.removeItem(k); } catch { /* storage blocked */ }
+    if (!window.desktop) {
+      try {
+        for (const reg of await navigator.serviceWorker?.getRegistrations() ?? []) if (new URL(reg.scope).pathname.startsWith(new URL('.', location.href).pathname)) await reg.unregister();
+        for (const name of await caches.keys()) if (name.startsWith('margin-')) await caches.delete(name);
+      } catch { /* no offline copy */ }
+    }
+    location.reload();
+  }
   function clearHistory() {
     if (!confirm('Clear the version history of every document? The documents themselves are kept.')) return;
     setHistory({});
@@ -173,13 +189,18 @@ export default function App() {
       return null;
     }
   }
-  async function changeEnv(edit) {
-    if (envText.current == null && (await reloadEnv()) == null) return;
-    const text = edit(envText.current);
-    envText.current = text;
-    setEnv(e => ({ ...e, text }));
-    try { const r = await writeEnv(text); if (r?.path) setEnv(e => ({ ...e, path: r.path })); }
-    catch (err) { say(`Could not write the .env file: ${err.message}`, true); }
+  // Changes run one after another, each on the text the last one left.
+  const envQueue = useRef(Promise.resolve());
+  function changeEnv(edit) {
+    const run = async () => {
+      if (envText.current == null && (await reloadEnv()) == null) return;
+      const text = edit(envText.current);
+      envText.current = text;
+      setEnv(e => ({ ...e, text }));
+      try { const r = await writeEnv(text); if (r?.path) setEnv(e => ({ ...e, path: r.path })); }
+      catch (err) { say(`Could not write the .env file: ${err.message}`, true); }
+    };
+    return (envQueue.current = envQueue.current.then(run, run));
   }
 
   // One AI request with the account in use. With automatic switching, a used-up or refused
@@ -378,6 +399,8 @@ export default function App() {
     return () => { for (const [name, fn] of events) removeEventListener(name, fn); };
   }, []);
 
+  const freeName = (t, base) => { const taken = accountsIn(t).accounts.map(a => a.name); let n = base, k = 1; while (taken.includes(n)) n = `${base}_${++k}`; return n; };
+
   // Load the AI accounts, and move a key saved by an older version (one account in
   // localStorage) into the .env file. The Java window adds window.desktop after the page has
   // started, so there it waits for desktop-ready rather than reading the browser copy.
@@ -388,7 +411,7 @@ export default function App() {
       if (text == null || !(model || key)) return;
       if (!accountsIn(text).accounts.some(a => a.key === key && a.model === model)) {
         const service = format === 'anthropic' ? (url && url !== SERVICES.anthropic.url ? 'custom-anthropic' : 'anthropic') : (url && url !== SERVICES.openai.url ? 'custom' : 'openai');
-        await changeEnv(t => saveAccount(t, { name: 'MAIN', service, model: model || '', key: key || '', url: url || '', plan: SERVICES[service].plan, limit: null }));
+        await changeEnv(t => saveAccount(t, { name: freeName(t, 'MAIN'), service, model: model || '', key: key || '', url: url || '', plan: SERVICES[service].plan, limit: null }));
       }
       setAI(rest);
       saveAI(rest);
@@ -398,7 +421,7 @@ export default function App() {
     addEventListener('desktop-ready', load);
     return () => removeEventListener('desktop-ready', load);
   }, []);
-  useEffect(() => { if (settings) reloadEnv(); }, [settings]);
+  useEffect(() => { if (settings) envQueue.current = envQueue.current.then(reloadEnv); }, [settings]);
 
   // Requests from outside the page: the desktop shell (files opened from the system, New
   // document from the taskbar jump list or Dock, the macOS menu bar), or, for the installed
@@ -488,7 +511,7 @@ export default function App() {
       <Settings
         open={settings} onClose={() => setSettings(false)} prefs={prefs} setPref={setPref} onReset={resetPrefs}
         accounts={accounts} onTestAI={a => askAI('Reply with exactly one word: ready', 'ready', undefined, a)}
-        backup={{ count: live.length, bytes: storedBytes, historyBytes, onExport: exportAll, onImport: importAll, onDeleteAll: deleteAll, onClearHistory: clearHistory }}
+        backup={{ count: live.length, bytes: storedBytes, historyBytes, onExport: exportAll, onImport: importAll, onDeleteAll: deleteAll, onClearHistory: clearHistory, onRemoveEverything: removeEverything }}
       />
       <History
         open={versions} onClose={() => setVersions(false)} doc={doc} versions={history[doc.id] || []}

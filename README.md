@@ -63,6 +63,21 @@ The installers are not signed with a paid developer certificate yet. If Windows 
 
 The desktop apps open `.md` and `.markdown` files with a double-click, and appear under **Open With** for `.txt` and `.html`. Only one Margin window runs: opening another file sends it to the window you already have.
 
+### Uninstall
+
+Uninstalling removes the app and keeps what you wrote, so reinstalling brings it back. To leave nothing behind, use **Settings → Backup → Remove everything** first (documents, history, settings, AI accounts and keys), or one of these commands, which remove the app and its data without asking:
+
+| System | How |
+|---|---|
+| Windows | **Settings → Apps → Installed apps → Margin → Uninstall** asks whether to delete your documents and keys too (default: keep). Or `Start-Process "$env:LOCALAPPDATA\Programs\margin\Uninstall Margin.exe" -ArgumentList '/S','--delete-app-data' -Wait` |
+| macOS | Drag Margin to the Trash. Or `rm -rf /Applications/Margin.app ~/Library/Application\ Support/Margin ~/Library/Preferences/io.github.pymite6941.margin.plist ~/Library/Saved\ Application\ State/io.github.pymite6941.margin.savedState ~/Library/Logs/Margin` |
+| Debian, Ubuntu | `sudo apt remove -y margin && rm -rf ~/.config/Margin` |
+| AppImage | `rm -f Margin.AppImage && rm -rf ~/.config/Margin` |
+| Java window | Delete the folder, then `rm -rf ~/.margin` |
+| Browser | Remove everything in Settings → Backup, then, if you installed it, **Uninstall Margin** from the browser menu in its window |
+
+Files you saved yourself are never touched. More in the [guide](https://pymite6941.github.io/margin/docs/#uninstall).
+
 ## What it does
 
 - A sidebar of documents with search; the first line is the title. Pin documents to the top
@@ -130,6 +145,7 @@ One React app, three ways to run it. The web build is what GitHub Pages serves. 
 | `src/lib/files.js` | Opening and saving files |
 | `src/lib/tidy.js` | HTML indenter behind Tidy |
 | `src/lib/ai.js` | Optional bring-your-own AI: services and the request. Keep it small |
+| `build/installer.nsh` | Windows uninstaller: asks before deleting documents and keys |
 | `src/lib/keys.js`, `src/lib/env.js` | AI accounts in a `.env` file, usage and limits, switching |
 | `src/components/Accounts.jsx` | Settings → AI |
 | `src/components/Settings.jsx` | The settings dialog behind the gear. New preferences also need a default in `DEFAULT_PREFS` (`src/lib/storage.js`) |

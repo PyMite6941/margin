@@ -106,6 +106,7 @@
       "shortcutName": "Margin",
       "runAfterFinish": true,
       "deleteAppDataOnUninstall": false,
+      "include": "build/installer.nsh",
       "artifactName": "${productName}-Setup.${ext}"
     },
     "copyright": "Copyright © PyMite6941",
