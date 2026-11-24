@@ -69,9 +69,13 @@ if (mode === 'run') {
   copyDir(join(ROOT, 'dist'), join(ROOT, input, 'web'));
   const { version, description } = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
   const dest = join('release', 'java');
-  removeDir(join(ROOT, dest, process.platform === 'darwin' ? 'Margin.app' : 'Margin'));
+  const mac = process.platform === 'darwin';
+  removeDir(join(ROOT, dest, mac ? 'Margin.app' : 'Margin'));
+  // jpackage on macOS refuses versions starting with 0 (0.1.3). It gets 1.1.3 to pass that
+  // check, and the real version is written into Info.plist afterwards (see below).
+  const packVersion = mac && version.startsWith('0.') ? version.replace(/^0\./, '1.') : version;
   run('jpackage', [
-    '--type', type, '--name', 'Margin', '--app-version', version, '--description', description, '--vendor', 'PyMite6941',
+    '--type', type, '--name', 'Margin', '--app-version', packVersion, '--description', description, '--vendor', 'PyMite6941',
     '--input', input, '--main-jar', 'margin.jar', '--main-class', 'margin.Margin',
     '--module-path', lib, '--add-modules', `${MODULES},java.net.http`,
     ...JAVA_OPTS.flatMap(o => ['--java-options', o]),
@@ -80,6 +84,12 @@ if (mode === 'run') {
     ...(process.platform === 'darwin' ? ['--mac-package-identifier', 'io.github.pymite6941.margin.java', '--mac-package-name', 'Margin'] : []),
     '--dest', dest,
   ]);
+  if (mac && packVersion !== version) {
+    const plist = join(dest, 'Margin.app', 'Contents', 'Info.plist');
+    for (const key of ['CFBundleShortVersionString', 'CFBundleVersion']) run('/usr/libexec/PlistBuddy', ['-c', `Set :${key} ${version}`, plist]);
+    // Editing Info.plist breaks the bundle's signature; Apple silicon will not open it unsigned.
+    run('codesign', ['--force', '--deep', '--sign', '-', join(dest, 'Margin.app')]);
+  }
   console.log(`Built into ${dest}`);
 } else {
   console.error(`Unknown mode "${mode}". Use run or package.`);
