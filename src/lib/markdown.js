@@ -15,16 +15,18 @@ export const md = (() => {
   const cells = row => row.trim().replace(/^\|/, '').replace(/(?<!\\)\|$/, '').split(/(?<!\\)\|/).map(c => c.trim().replace(/\\\|/g, '|'));
 
   function inline(s) {
-    const code = [];
-    return esc(s)
+    const code = [], urls = [];   // set aside, so * and _ in them are not read as emphasis
+    const keep = u => `\x01${urls.push(u) - 1}\x01`;
+    return esc(s.replace(/[\0\x01]/g, ''))   // the markers below must not come from the text
       .replace(/`([^`]+)`/g, (_, c) => `\0${code.push(c) - 1}\0`)
-      .replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (m, alt, u) => safe(u) ? `<img alt="${alt}" src="${u}">` : m)
-      .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, t, u) => safe(u) ? `<a href="${u}" target="_blank" rel="noopener">${t}</a>` : m)
+      .replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (m, alt, u) => safe(u) ? `<img alt="${keep(alt)}" src="${keep(u)}">` : m)
+      .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, t, u) => safe(u) ? `<a href="${keep(u)}" target="_blank" rel="noopener">${t}</a>` : m)
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/(^|[^*\w])\*([^*\s](?:[^*]*[^*\s])?)\*/g, '$1<em>$2</em>')
       .replace(/(^|\W)_([^_\s](?:[^_]*[^_\s])?)_(?=\W|$)/g, '$1<em>$2</em>')
       .replace(/~~(.+?)~~/g, '<del>$1</del>')
-      .replace(/\0(\d+)\0/g, (_, i) => `<code>${code[i]}</code>`);
+      .replace(/\0(\d+)\0/g, (_, i) => `<code>${code[i]}</code>`)
+      .replace(/\x01(\d+)\x01/g, (_, i) => urls[i]);
   }
 
   return function render(src, opts = {}, base = 0) {

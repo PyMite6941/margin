@@ -38,7 +38,13 @@ const SYSTEM = 'You are an editing tool inside a text editor. Follow the instruc
 
 async function post(url, headers, body, signal) {
   if (window.desktop?.request) {
-    const res = await window.desktop.request({ method: 'POST', url, headers, body: JSON.stringify(body) });
+    // The desktop request cannot be cancelled, so a stop (Escape) stops waiting for it: the
+    // reply, if one comes, is dropped rather than replacing the text after the user said no.
+    const stopped = new Promise((_, fail) => {
+      const stop = () => fail(new DOMException('Stopped', 'AbortError'));
+      if (signal?.aborted) stop(); else signal?.addEventListener('abort', stop, { once: true });
+    });
+    const res = await Promise.race([window.desktop.request({ method: 'POST', url, headers, body: JSON.stringify(body) }), stopped]);
     return { ok: res.status >= 200 && res.status < 300, status: res.status, text: res.text };
   }
   const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal });

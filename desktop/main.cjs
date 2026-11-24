@@ -31,7 +31,7 @@ protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: t
 function serve(request) {
   let file = path.join(DIST, decodeURIComponent(new URL(request.url).pathname));
   if (file.endsWith(path.sep)) file = path.join(file, 'index.html');
-  if (!file.startsWith(DIST)) return new Response('Forbidden', { status: 403 });
+  if (file !== DIST && !file.startsWith(DIST + path.sep)) return new Response('Forbidden', { status: 403 });
   return net.fetch(pathToFileURL(file).toString()).catch(() => new Response('Not found', { status: 404 }));
 }
 
@@ -81,6 +81,28 @@ function handleArgs(argv) {
   for (const a of args) if (!a.startsWith('-') && TEXT_FILE.test(a)) openPath(a);
 }
 
+// Margin's own pages: the built app, or the Vite server while developing. Only these may
+// use the IPC handlers below or stay in a window; anything else opens in the system browser.
+const ours = url => {
+  try { const u = new URL(url); return (u.protocol === 'app:' && u.host === 'margin') || Boolean(DEV_URL && u.origin === new URL(DEV_URL).origin); }
+  catch { return false; }
+};
+// Only web and mail links go to the system; file:, custom schemes and the like could run programs.
+const openOutside = url => { if (/^(https?|mailto):/i.test(url)) shell.openExternal(url); };
+const fromUs = event => ours(event.senderFrame?.url || '');
+const handle = (channel, fn) => ipcMain.handle(channel, (event, ...args) => {
+  if (!fromUs(event)) throw new Error('Not allowed');
+  return fn(event, ...args);
+});
+
+// Every window: no navigating away from Margin (a dropped file, a stray link), since a page
+// shown there would get window.desktop and with it the .env file.
+app.on('web-contents-created', (e, contents) => {
+  contents.on('will-navigate', (event, url) => { if (!ours(url)) { event.preventDefault(); openOutside(url); } });
+  contents.on('will-redirect', (event, url) => { if (!ours(url)) event.preventDefault(); });
+  contents.on('will-attach-webview', event => event.preventDefault());
+});
+
 function createWindow() {
   const b = loadBounds();
   win = new BrowserWindow({
@@ -94,20 +116,19 @@ function createWindow() {
   win.webContents.on('did-start-navigation', (e) => { if (e.isMainFrame && !e.isSameDocument) listening = false; });
   win.on('closed', () => { win = null; listening = false; });
   win.webContents.setWindowOpenHandler(({ url }) => {
-    const ours = url.startsWith('app://') || (DEV_URL && url.startsWith(DEV_URL));
-    if (ours) return { action: 'allow', overrideBrowserWindowOptions: { autoHideMenuBar: true, webPreferences: { preload } } };
-    shell.openExternal(url);
+    if (ours(url)) return { action: 'allow', overrideBrowserWindowOptions: { autoHideMenuBar: true, webPreferences: { preload } } };
+    openOutside(url);
     return { action: 'deny' };
   });
   win.loadURL(DEV_URL || 'app://margin/');
 }
 
-ipcMain.handle('launch:ready', () => {
+handle('launch:ready', () => {
   listening = true;
   return pending.splice(0);
 });
 
-ipcMain.handle('file:open', async (event, filters) => {
+handle('file:open', async (event, filters) => {
   const result = await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), { properties: ['openFile'], filters });
   if (result.canceled) return null;
   const file = result.filePaths[0];
@@ -116,7 +137,7 @@ ipcMain.handle('file:open', async (event, filters) => {
   return { path: file, name: path.basename(file), text: await fs.promises.readFile(file, 'utf8') };
 });
 
-ipcMain.handle('file:save', async (event, { path: wanted, name, text, filters }) => {
+handle('file:save', async (event, { path: wanted, name, text, filters }) => {
   let file = wanted;
   if (!granted.has(file)) {
     const result = await dialog.showSaveDialog(BrowserWindow.fromWebContents(event.sender), { defaultPath: wanted || name, filters });
@@ -132,26 +153,35 @@ ipcMain.handle('file:save', async (event, { path: wanted, name, text, filters })
 // The AI accounts' .env file (src/lib/keys.js): one fixed file in the app's data folder, so the
 // page can read and write it but no other path. Owner-only permissions on macOS and Linux.
 const envFile = () => path.join(app.getPath('userData'), '.env');
-ipcMain.handle('env:read', async () => {
+let envWrites = Promise.resolve();
+handle('env:read', async () => {
   const file = envFile();
   try { return { path: file, text: await fs.promises.readFile(file, 'utf8') }; }
   catch (err) { if (err.code === 'ENOENT') return { path: file, text: '' }; throw err; }
 });
-ipcMain.handle('env:write', async (event, text) => {
+handle('env:write', async (event, text) => {
   if (typeof text !== 'string' || text.length > 1e6) throw new Error('Not a .env file');
   const file = envFile();
-  await fs.promises.mkdir(path.dirname(file), { recursive: true });
-  await fs.promises.writeFile(file, text, { encoding: 'utf8', mode: 0o600 });
-  if (process.platform !== 'win32') await fs.promises.chmod(file, 0o600);
+  // One write at a time, each to a new owner-only file renamed over the old one, so the file
+  // is never half written and never readable by others, even for a moment.
+  const write = envWrites.then(async () => {
+    await fs.promises.mkdir(path.dirname(file), { recursive: true });
+    const temp = `${file}.${process.pid}.tmp`;
+    await fs.promises.writeFile(temp, text, { encoding: 'utf8', mode: 0o600 });
+    try { await fs.promises.rename(temp, file); }
+    catch (err) { await fs.promises.rm(temp, { force: true }); throw err; }
+  });
+  envWrites = write.catch(() => {});
+  await write;
   return { path: file };
 });
-ipcMain.handle('env:reveal', async () => {
+handle('env:reveal', async () => {
   const file = envFile();
   if (fs.existsSync(file)) shell.showItemInFolder(file); else await shell.openPath(path.dirname(file));
 });
 
 // Used only by the optional AI feature (src/lib/ai.js), to reach the provider the user configured.
-ipcMain.handle('net:request', async (event, { method, url, headers, body }) => {
+handle('net:request', async (event, { method, url, headers, body }) => {
   if (!/^https?:\/\//i.test(url)) throw new Error('Only http and https addresses are allowed');
   const res = await net.fetch(url, { method, headers, body });
   return { status: res.status, text: await res.text() };

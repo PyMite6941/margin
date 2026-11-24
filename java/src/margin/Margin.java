@@ -85,10 +85,18 @@ public class Margin extends Application {
 
         WebView view = new WebView();
         engine = view.getEngine();
+        // Margin's own pages are the files in the web build. Only they get the bridge (and with
+        // it the .env file), and the window never leaves them: anything else goes to the browser.
+        Path home = web.toAbsolutePath().normalize();
+        engine.locationProperty().addListener((o, was, url) -> {
+            if (url == null || url.isEmpty() || inside(url, home)) return;
+            openOutside(url, home);
+            Platform.runLater(() -> engine.load(was != null && inside(was, home) ? was : index.toUri().toString()));
+        });
         // A fixed data folder keeps documents (localStorage) between launches.
         engine.setUserDataDirectory(Path.of(System.getProperty("user.home"), ".margin", "webview").toFile());
         engine.getLoadWorker().stateProperty().addListener((o, was, now) -> {
-            if (now == Worker.State.SUCCEEDED) {
+            if (now == Worker.State.SUCCEEDED && inside(engine.getLocation(), home)) {
                 ((JSObject) engine.executeScript("window")).setMember("javaBridge", bridge);
                 engine.executeScript(SHIM);
             }
@@ -98,7 +106,7 @@ public class Margin extends Application {
             WebEngine temp = new WebEngine();
             temp.locationProperty().addListener((o, was, url) -> {
                 if (url == null || url.isEmpty()) return;
-                getHostServices().showDocument(url.endsWith("/") && url.startsWith("file:") ? url + "index.html" : url);
+                openOutside(url, home);
                 Platform.runLater(() -> temp.load(null));
             });
             return temp;
@@ -111,6 +119,22 @@ public class Margin extends Application {
         stage.setScene(new Scene(view, 1280, 820));
         stage.show();
         engine.load(index.toUri().toString());
+    }
+
+    // Web and mail links, and the guide that ships with the build. Not other files or schemes,
+    // which the system could treat as programs to run.
+    private void openOutside(String url, Path home) {
+        if (url.matches("(?i)(https?|mailto):.*")) getHostServices().showDocument(url);
+        else if (inside(url, home)) getHostServices().showDocument(url.endsWith("/") ? url + "index.html" : url);
+    }
+
+    // Whether url is a file in the web build. Compared as paths, since WebKit reports the
+    // address percent-encoded (the build may sit in a folder with non-ASCII characters).
+    private static boolean inside(String url, Path home) {
+        try {
+            URI u = URI.create(url);
+            return "file".equalsIgnoreCase(u.getScheme()) && Path.of(u).toAbsolutePath().normalize().startsWith(home);
+        } catch (Exception notAFile) { return false; }
     }
 
     private static FileChooser chooser(String title, String extensions) {
@@ -182,14 +206,23 @@ public class Margin extends Application {
             } catch (Exception e) { return error(e); }
         }
 
-        public String writeEnv(String text) {
+        public synchronized String writeEnv(String text) {
             try {
                 if (text == null || text.length() > 1_000_000) throw new IllegalArgumentException("Not a .env file");
                 Path p = envFile();
                 Files.createDirectories(p.getParent());
-                Files.writeString(p, text, StandardCharsets.UTF_8);
-                try { Files.setPosixFilePermissions(p, java.nio.file.attribute.PosixFilePermissions.fromString("rw-------")); }
-                catch (UnsupportedOperationException windows) { /* Windows: the user folder is already private */ }
+                // A new owner-only file renamed over the old one: never half written, never readable by others.
+                Path temp = p.resolveSibling(".env." + ProcessHandle.current().pid() + ".tmp");
+                Files.deleteIfExists(temp);
+                try {
+                    Files.createFile(temp, java.nio.file.attribute.PosixFilePermissions.asFileAttribute(java.nio.file.attribute.PosixFilePermissions.fromString("rw-------")));
+                } catch (UnsupportedOperationException windows) {
+                    Files.createFile(temp);   // Windows: the user folder is already private
+                }
+                try {
+                    Files.writeString(temp, text, StandardCharsets.UTF_8);
+                    Files.move(temp, p, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+                } finally { Files.deleteIfExists(temp); }
                 return "{\"path\":" + json(p.toString()) + "}";
             } catch (Exception e) { return error(e); }
         }

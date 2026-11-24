@@ -24,7 +24,8 @@ function Form({ start, taken, onSave, onCancel }) {
   const [limit, setLimitDraft] = useState(start.limit || { count: '', unit: start.plan === 'payg' ? 'tokens' : 'requests', per: start.plan === 'payg' ? 'month' : 'day' });
   const setLimit = (k, v) => setLimitDraft(l => ({ ...l, [k]: v }));
   const pickService = s => {
-    setA(x => ({ ...x, service: s, plan: SERVICES[s].plan, url: '' }));
+    // A key belongs to its service: keeping it would send it to the new one.
+    setA(x => ({ ...x, service: s, plan: SERVICES[s].plan, url: '', key: x.service === s ? x.key : '' }));
     if (!limit.count) setLimitDraft({ count: '', unit: SERVICES[s].plan === 'payg' ? 'tokens' : 'requests', per: SERVICES[s].plan === 'payg' ? 'month' : 'day' });
   };
   const finished = () => ({ ...a, name, limit: +limit.count > 0 ? { ...limit, count: Math.floor(+limit.count) } : null });
